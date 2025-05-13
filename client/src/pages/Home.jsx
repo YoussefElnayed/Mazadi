@@ -1,33 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiArrowRight, FiShoppingCart, FiAward } from 'react-icons/fi'
+import { FiArrowRight, FiShoppingCart, FiAward, FiClock } from 'react-icons/fi'
 import { HiOutlineShoppingCart, HiOutlineLightBulb } from 'react-icons/hi'
 import { FcElectronics, FcElectroDevices } from 'react-icons/fc'
 import ProductCard from '../components/ui/ProductCard'
 import CategoryCard from '../components/ui/CategoryCard'
+import AuctionCard from '../components/ui/AuctionCard'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Button from '../components/ui/Button'
 import NewsletterSubscribe from '../components/NewsletterSubscribe'
+import Testimonials from '../components/Testimonials'
 import { getAllProducts } from '../services/productService'
 import { getAllCategories } from '../services/categoryService'
+import { getActiveAuctions } from '../services/auctionService'
+import { AuctionContext } from '../context/AuctionContext'
 
 const Home = () => {
+  const { activeAuctions } = useContext(AuctionContext)
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [categories, setCategories] = useState([])
+  const [featuredAuctions, setFeaturedAuctions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [productsData, categoriesData] = await Promise.all([
+        const [productsData, categoriesData, auctionsData] = await Promise.all([
           getAllProducts(),
-          getAllCategories()
+          getAllCategories(),
+          getActiveAuctions()
         ])
 
         // Get featured products (first 8 products)
         setFeaturedProducts(productsData.slice(0, 8))
         setCategories(categoriesData)
+
+        // Get featured auctions (first 4 active auctions)
+        setFeaturedAuctions(auctionsData?.slice(0, 4) || [])
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
@@ -137,7 +148,7 @@ const Home = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.4 }}
               >
-                <Link to="/products">
+                <Link to="/auctions">
                   <Button
                     variant="outline"
                     size="sm"
@@ -239,8 +250,48 @@ const Home = () => {
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent"></div>
       </section>
 
-      {/* Categories Section */}
+      {/* Live Auctions Section */}
       <section className="py-12 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Live Auctions</h2>
+            <Link to="/auctions" className="text-primary-600 hover:text-primary-700 flex items-center">
+              View All <FiArrowRight className="ml-1" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="py-12 flex justify-center">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : featuredAuctions.length > 0 ? (
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              {featuredAuctions.map((auction) => (
+                <motion.div key={auction._id} variants={itemVariants}>
+                  <AuctionCard auction={auction} />
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <FiClock className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-lg font-medium text-gray-900">No active auctions</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Check back soon for new auction listings.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-12 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Shop by Category</h2>
@@ -250,10 +301,8 @@ const Home = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="bg-gray-200 animate-pulse rounded-lg h-40"></div>
-              ))}
+            <div className="py-12 flex justify-center">
+              <LoadingSpinner size="lg" />
             </div>
           ) : (
             <motion.div
@@ -274,7 +323,7 @@ const Home = () => {
       </section>
 
       {/* Featured Products Section */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Featured Products</h2>
@@ -284,10 +333,8 @@ const Home = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, index) => (
-                <div key={index} className="bg-gray-200 animate-pulse rounded-lg h-64"></div>
-              ))}
+            <div className="py-12 flex justify-center">
+              <LoadingSpinner size="lg" />
             </div>
           ) : (
             <motion.div
@@ -305,6 +352,11 @@ const Home = () => {
             </motion.div>
           )}
         </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-12">
+        <Testimonials />
       </section>
 
       {/* Special Offer Banner */}

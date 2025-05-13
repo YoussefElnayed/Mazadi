@@ -1,16 +1,16 @@
-/* 
+/*
 
 ================== Most Important ==================
 * Issue 1 :
 In uploads folder you need create 3 folder like bellow.
-Folder structure will be like: 
+Folder structure will be like:
 public -> uploads -> 1. products 2. customize 3. categories
 *** Now This folder will automatically create when we run the server file
 
 * Issue 2:
-For admin signup just go to the auth 
-controller then newUser obj, you will 
-find a role field. role:1 for admin signup & 
+For admin signup just go to the auth
+controller then newUser obj, you will
+find a role field. role:1 for admin signup &
 role: 0 or by default it for customer signup.
 go user model and see the role field.
 
@@ -32,6 +32,7 @@ const brainTreeRouter = require("./routes/braintree");
 const orderRouter = require("./routes/orders");
 const usersRouter = require("./routes/users");
 const customizeRouter = require("./routes/customize");
+const auctionRouter = require("./routes/auctions");
 // Import Auth middleware for check user login or not~
 const { loginCheck } = require("./middleware/auth");
 const CreateAllFolder = require("./config/uploadFolderCreateScript");
@@ -69,9 +70,20 @@ app.use("/api/product", productRouter);
 app.use("/api", brainTreeRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/customize", customizeRouter);
+app.use("/api/auction", auctionRouter);
+
+// Import WebSocket server
+const http = require('http');
+const { initWebSocket } = require('./websocket');
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize WebSocket server
+initWebSocket(server);
 
 // Run Server
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log("Server is running on ", PORT);
 });
