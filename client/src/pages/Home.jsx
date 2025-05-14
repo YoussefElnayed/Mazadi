@@ -4,43 +4,33 @@ import { motion } from 'framer-motion'
 import { FiArrowRight, FiShoppingCart, FiAward, FiClock } from 'react-icons/fi'
 import { HiOutlineShoppingCart, HiOutlineLightBulb } from 'react-icons/hi'
 import { FcElectronics, FcElectroDevices } from 'react-icons/fc'
-import ProductCard from '../components/ui/ProductCard'
-import CategoryCard from '../components/ui/CategoryCard'
 import AuctionCard from '../components/ui/AuctionCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Button from '../components/ui/Button'
 import NewsletterSubscribe from '../components/NewsletterSubscribe'
 import Testimonials from '../components/Testimonials'
-import { getAllProducts } from '../services/productService'
-import { getAllCategories } from '../services/categoryService'
 import { getActiveAuctions } from '../services/auctionService'
 import { AuctionContext } from '../context/AuctionContext'
 
 const Home = () => {
   const { activeAuctions } = useContext(AuctionContext)
-  const [featuredProducts, setFeaturedProducts] = useState([])
-  const [categories, setCategories] = useState([])
   const [featuredAuctions, setFeaturedAuctions] = useState([])
+  const [recentAuctions, setRecentAuctions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [productsData, categoriesData, auctionsData] = await Promise.all([
-          getAllProducts(),
-          getAllCategories(),
-          getActiveAuctions()
-        ])
-
-        // Get featured products (first 8 products)
-        setFeaturedProducts(productsData.slice(0, 8))
-        setCategories(categoriesData)
+        const auctionsData = await getActiveAuctions()
 
         // Get featured auctions (first 4 active auctions)
         setFeaturedAuctions(auctionsData?.slice(0, 4) || [])
+
+        // Get recent auctions (next 8 auctions)
+        setRecentAuctions(auctionsData?.slice(4, 12) || [])
       } catch (error) {
-        console.error('Error fetching data:', error)
+        console.error('Error fetching auction data:', error)
       } finally {
         setLoading(false)
       }
@@ -290,12 +280,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
+      {/* Recent Auctions Section */}
       <section className="py-12 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Shop by Category</h2>
-            <Link to="/products" className="text-primary-600 hover:text-primary-700 flex items-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Recent Auctions</h2>
+            <Link to="/auctions" className="text-primary-600 hover:text-primary-700 flex items-center">
               View All <FiArrowRight className="ml-1" />
             </Link>
           </div>
@@ -304,30 +294,38 @@ const Home = () => {
             <div className="py-12 flex justify-center">
               <LoadingSpinner size="lg" />
             </div>
-          ) : (
+          ) : recentAuctions.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"
               variants={containerVariants}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
             >
-              {categories.slice(0, 4).map((category) => (
-                <motion.div key={category._id} variants={itemVariants}>
-                  <CategoryCard category={category} />
+              {recentAuctions.map((auction) => (
+                <motion.div key={auction._id} variants={itemVariants}>
+                  <AuctionCard auction={auction} />
                 </motion.div>
               ))}
             </motion.div>
+          ) : (
+            <div className="text-center py-8 bg-white rounded-lg">
+              <FiClock className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-lg font-medium text-gray-900">No recent auctions</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Check back soon for new auction listings.
+              </p>
+            </div>
           )}
         </div>
       </section>
 
-      {/* Featured Products Section */}
+      {/* Upcoming Auctions Section */}
       <section className="py-12 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Featured Products</h2>
-            <Link to="/products" className="text-primary-600 hover:text-primary-700 flex items-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Upcoming Auctions</h2>
+            <Link to="/auctions" className="text-primary-600 hover:text-primary-700 flex items-center">
               View All <FiArrowRight className="ml-1" />
             </Link>
           </div>
@@ -337,19 +335,12 @@ const Home = () => {
               <LoadingSpinner size="lg" />
             </div>
           ) : (
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-              variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-            >
-              {featuredProducts.map((product) => (
-                <motion.div key={product._id} variants={itemVariants}>
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </motion.div>
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900">Stay tuned for upcoming auctions!</h3>
+              <p className="mt-2 text-sm text-gray-500 max-w-2xl mx-auto">
+                We're constantly adding new exciting auctions. Subscribe to our newsletter to be notified when new auctions are scheduled.
+              </p>
+            </div>
           )}
         </div>
       </section>

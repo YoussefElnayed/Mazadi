@@ -1,13 +1,36 @@
-import { useState, useEffect, useContext, lazy, Suspense } from 'react';
+import { useState, useEffect, useContext, lazy, Suspense, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FiArrowLeft, FiClock, FiUser, FiTag, FiInfo } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiArrowLeft, FiClock, FiUser, FiTag, FiInfo, FiHeart, FiEye, FiActivity, FiBarChart2 } from 'react-icons/fi';
 import { getAuctionById, subscribeToAuction, addEventListener } from '../services/auctionService';
 import { AuthContext } from '../context/AuthContext';
+import { AuctionContext } from '../context/AuctionContext';
 import Button from '../components/ui/Button';
 import LazyImage from '../components/ui/LazyImage';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 // Lazy loaded components
 const AuctionTimer = lazy(() => import('../components/ui/AuctionTimer'));
@@ -17,10 +40,26 @@ const BidForm = lazy(() => import('../components/ui/BidForm'));
 const AuctionDetail = () => {
   const { id } = useParams();
   const { isAuthenticated, user } = useContext(AuthContext);
+  const {
+    watchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    getBidHistory,
+    isHotAuction,
+    getViewerCount
+  } = useContext(AuctionContext);
+
   const [auction, setAuction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState('details');
+  const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const [showBidAnimation, setShowBidAnimation] = useState(false);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [bidChartData, setBidChartData] = useState(null);
+
+  // Refs for animations
+  const bidAnimationRef = useRef(null);
 
   // Fetch auction data
   useEffect(() => {
@@ -45,12 +84,61 @@ const AuctionDetail = () => {
     }
   }, [id]);
 
+  // Check if auction is in watchlist
+  useEffect(() => {
+    setIsWatchlisted(watchlist.includes(id));
+  }, [watchlist, id]);
+
+  // Update viewer count
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setViewerCount(getViewerCount(id));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [id, getViewerCount]);
+
+  // Generate bid chart data
+  useEffect(() => {
+    if (auction && auction.bids && auction.bids.length > 0) {
+      const bidHistory = [...auction.bids].sort((a, b) =>
+        new Date(a.timestamp) - new Date(b.timestamp)
+      );
+
+      const labels = bidHistory.map(bid => {
+        const date = new Date(bid.timestamp);
+        return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+      });
+
+      const data = bidHistory.map(bid => bid.amount);
+
+      setBidChartData({
+        labels,
+        datasets: [
+          {
+            label: 'Bid Price ($)',
+            data,
+            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: 'rgba(99, 102, 241, 0.5)',
+            tension: 0.2
+          }
+        ]
+      });
+    }
+  }, [auction]);
+
   // Listen for real-time auction updates
   useEffect(() => {
     const removeListener = addEventListener('auction_update', (data) => {
       if (data.auction.id === id) {
         setAuction(prevAuction => {
           if (!prevAuction) return prevAuction;
+
+          // Show bid animation when price changes
+          if (prevAuction.currentPrice !== data.auction.currentPrice) {
+            setShowBidAnimation(true);
+            setTimeout(() => setShowBidAnimation(false), 2000);
+          }
 
           return {
             ...prevAuction,
@@ -66,7 +154,17 @@ const AuctionDetail = () => {
       }
     });
 
-    return () => removeListener();
+    // Listen for viewer count updates
+    const viewerListener = addEventListener('viewer_count_update', (data) => {
+      if (data.auctionId === id) {
+        setViewerCount(data.count);
+      }
+    });
+
+    return () => {
+      removeListener();
+      viewerListener();
+    };
   }, [id]);
 
   // Handle auction end
@@ -92,6 +190,19 @@ const AuctionDetail = () => {
     getAuctionById(id)
       .then(data => setAuction(data))
       .catch(error => console.error('Error refreshing auction data:', error));
+
+    // Show bid animation
+    setShowBidAnimation(true);
+    setTimeout(() => setShowBidAnimation(false), 2000);
+  };
+
+  // Toggle watchlist
+  const toggleWatchlist = () => {
+    if (isWatchlisted) {
+      removeFromWatchlist(id);
+    } else {
+      addToWatchlist(id);
+    }
   };
 
   if (loading) {
@@ -192,14 +303,71 @@ const AuctionDetail = () => {
                   {auction.product.pName}
                 </motion.h1>
 
-                {/* Current Price */}
-                <div className="mb-4">
+                {/* Current Price with Animation */}
+                <div className="mb-4 relative">
                   <div className="text-sm text-gray-500">Current Bid</div>
-                  <div className="text-3xl font-bold text-primary-600">${auction.currentPrice.toFixed(2)}</div>
+                  <div className="flex items-center">
+                    <div className="text-3xl font-bold text-primary-600">
+                      ${auction.currentPrice.toFixed(2)}
+                    </div>
+
+                    {/* Bid Animation */}
+                    <AnimatePresence>
+                      {showBidAnimation && (
+                        <motion.div
+                          ref={bidAnimationRef}
+                          initial={{ opacity: 0, scale: 0.5, x: -20 }}
+                          animate={{ opacity: 1, scale: 1, x: 10 }}
+                          exit={{ opacity: 0, scale: 0.5, y: -20 }}
+                          className="ml-2 text-green-500 font-medium"
+                        >
+                          <div className="flex items-center">
+                            <FiActivity className="mr-1" />
+                            <span>New Bid!</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <div className="text-sm text-gray-500">
                     Starting Price: ${auction.startingPrice.toFixed(2)}
                   </div>
+
+                  {/* Real-time Stats */}
+                  <div className="flex items-center mt-2 text-sm text-gray-500 space-x-4">
+                    <div className="flex items-center">
+                      <FiEye className="mr-1" />
+                      <span>{viewerCount} watching now</span>
+                    </div>
+                    <div className="flex items-center">
+                      <FiUser className="mr-1" />
+                      <span>{auction.bids?.length || 0} bids</span>
+                    </div>
+                    {isHotAuction(id) && (
+                      <div className="flex items-center text-red-500 animate-pulse">
+                        <FiActivity className="mr-1" />
+                        <span>Hot</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Watchlist Button */}
+                {isAuthenticated && (
+                  <div className="mb-4">
+                    <button
+                      onClick={toggleWatchlist}
+                      className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isWatchlisted
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <FiHeart className={`mr-2 ${isWatchlisted ? 'fill-red-500 text-red-500' : ''}`} />
+                      {isWatchlisted ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Auction Timer */}
                 {!isEnded && (
@@ -238,9 +406,9 @@ const AuctionDetail = () => {
 
             {/* Tabs */}
             <div className="border-t border-gray-200">
-              <div className="flex border-b">
+              <div className="flex border-b overflow-x-auto">
                 <button
-                  className={`px-6 py-3 text-sm font-medium ${
+                  className={`px-6 py-3 text-sm font-medium whitespace-nowrap ${
                     activeTab === 'details'
                       ? 'border-b-2 border-primary-500 text-primary-600'
                       : 'text-gray-500 hover:text-gray-700'
@@ -250,7 +418,7 @@ const AuctionDetail = () => {
                   Details
                 </button>
                 <button
-                  className={`px-6 py-3 text-sm font-medium ${
+                  className={`px-6 py-3 text-sm font-medium whitespace-nowrap ${
                     activeTab === 'bids'
                       ? 'border-b-2 border-primary-500 text-primary-600'
                       : 'text-gray-500 hover:text-gray-700'
@@ -258,6 +426,19 @@ const AuctionDetail = () => {
                   onClick={() => setActiveTab('bids')}
                 >
                   Bid History ({auction.bids?.length || 0})
+                </button>
+                <button
+                  className={`px-6 py-3 text-sm font-medium whitespace-nowrap ${
+                    activeTab === 'chart'
+                      ? 'border-b-2 border-primary-500 text-primary-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setActiveTab('chart')}
+                >
+                  <div className="flex items-center">
+                    <FiBarChart2 className="mr-1" />
+                    Price Trend
+                  </div>
                 </button>
               </div>
 
@@ -267,7 +448,7 @@ const AuctionDetail = () => {
                     <h3 className="text-lg font-semibold mb-4">Product Description</h3>
                     <p className="text-gray-700 whitespace-pre-line">{auction.product.pDescription}</p>
                   </div>
-                ) : (
+                ) : activeTab === 'bids' ? (
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Bid History</h3>
                     <Suspense fallback={<div className="h-64 flex items-center justify-center">
@@ -275,6 +456,48 @@ const AuctionDetail = () => {
                     </div>}>
                       <BidHistory bids={auction.bids} currentUserId={user?._id} />
                     </Suspense>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Price Trend</h3>
+                    {bidChartData && auction.bids && auction.bids.length > 0 ? (
+                      <div className="h-64">
+                        <Line
+                          data={bidChartData}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                position: 'top',
+                              },
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context) {
+                                    return `$${context.raw}`;
+                                  }
+                                }
+                              }
+                            },
+                            scales: {
+                              y: {
+                                ticks: {
+                                  callback: function(value) {
+                                    return '$' + value;
+                                  }
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-gray-500">
+                        <FiBarChart2 className="mx-auto h-12 w-12 mb-4" />
+                        <p>Not enough bid data to display a chart.</p>
+                        <p className="text-sm">Charts will appear after multiple bids have been placed.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

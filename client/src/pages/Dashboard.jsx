@@ -1,54 +1,57 @@
 import { useState, useEffect, useContext } from 'react'
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiHome, FiShoppingBag, FiUser, FiHeart, FiLogOut, FiMenu, FiX } from 'react-icons/fi'
+import { FiHome, FiShoppingBag, FiUser, FiHeart, FiLogOut, FiMenu, FiX, FiDollarSign, FiAward } from 'react-icons/fi'
 import { AuthContext } from '../context/AuthContext'
 import { getUserOrders } from '../services/orderService'
+import MyBids from '../components/dashboard/MyBids'
+import WonAuctions from '../components/dashboard/WonAuctions'
+import Watchlist from '../components/dashboard/Watchlist'
 
 // Dashboard Components
 const Profile = () => {
   const { user } = useContext(AuthContext)
-  
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold mb-4">My Profile</h2>
-      
+
       <div className="flex flex-col md:flex-row items-start gap-6">
         <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
           {user?.userImage ? (
-            <img 
-              src={`/uploads/users/${user.userImage}`} 
-              alt={user.name} 
+            <img
+              src={`/uploads/users/${user.userImage}`}
+              alt={user.name}
               className="w-full h-full object-cover"
             />
           ) : (
             <FiUser size={48} className="text-gray-400" />
           )}
         </div>
-        
+
         <div className="flex-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
               <p className="text-gray-900">{user?.name}</p>
             </div>
-            
+
             <div>
               <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
               <p className="text-gray-900">{user?.email}</p>
             </div>
-            
+
             <div>
               <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
               <p className="text-gray-900">{user?.phoneNumber || 'Not provided'}</p>
             </div>
-            
+
             <div>
               <h3 className="text-sm font-medium text-gray-500">Account Type</h3>
               <p className="text-gray-900">{user?.userRole === 1 ? 'Admin' : 'Customer'}</p>
             </div>
           </div>
-          
+
           <div className="mt-6">
             <button className="btn btn-primary">Edit Profile</button>
           </div>
@@ -61,7 +64,7 @@ const Profile = () => {
 const Orders = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -74,10 +77,10 @@ const Orders = () => {
         setLoading(false)
       }
     }
-    
+
     fetchOrders()
   }, [])
-  
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Not processed':
@@ -94,7 +97,7 @@ const Orders = () => {
         return 'bg-gray-100 text-gray-800'
     }
   }
-  
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -112,11 +115,11 @@ const Orders = () => {
       </div>
     )
   }
-  
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold mb-4">My Orders</h2>
-      
+
       {orders.length > 0 ? (
         <div className="space-y-4">
           {orders.map((order) => (
@@ -134,7 +137,7 @@ const Orders = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Total Amount:</span>
@@ -171,7 +174,7 @@ const Wishlist = () => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold mb-4">My Wishlist</h2>
-      
+
       <div className="text-center py-8">
         <FiHeart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">Your wishlist is empty</h3>
@@ -189,20 +192,22 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login')
     }
   }, [isAuthenticated, navigate])
-  
+
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
     { path: '/dashboard/orders', label: 'My Orders', icon: <FiShoppingBag /> },
+    { path: '/dashboard/bids', label: 'My Bids', icon: <FiDollarSign /> },
+    { path: '/dashboard/won-auctions', label: 'Won Auctions', icon: <FiAward /> },
     { path: '/dashboard/profile', label: 'My Profile', icon: <FiUser /> },
-    { path: '/dashboard/wishlist', label: 'Wishlist', icon: <FiHeart /> },
+    { path: '/dashboard/watchlist', label: 'Watchlist', icon: <FiHeart /> },
   ]
-  
+
   const isActive = (path) => {
     if (path === '/dashboard' && location.pathname === '/dashboard') {
       return true
@@ -212,7 +217,7 @@ const Dashboard = () => {
     }
     return false
   }
-  
+
   return (
     <div className="bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -227,7 +232,7 @@ const Dashboard = () => {
               {isMobileMenuOpen ? <FiX /> : <FiMenu />}
             </button>
           </div>
-          
+
           {/* Sidebar */}
           <motion.div
             className={`w-full md:w-64 bg-white rounded-lg shadow-md overflow-hidden ${
@@ -241,9 +246,9 @@ const Dashboard = () => {
               <div className="flex items-center">
                 <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
                   {user?.userImage ? (
-                    <img 
-                      src={`/uploads/users/${user.userImage}`} 
-                      alt={user.name} 
+                    <img
+                      src={`/uploads/users/${user.userImage}`}
+                      alt={user.name}
                       className="w-full h-full object-cover rounded-full"
                     />
                   ) : (
@@ -256,7 +261,7 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-            
+
             <nav className="p-4">
               <ul className="space-y-2">
                 {navItems.map((item) => (
@@ -287,14 +292,16 @@ const Dashboard = () => {
               </ul>
             </nav>
           </motion.div>
-          
+
           {/* Content */}
           <div className="flex-1">
             <Routes>
               <Route index element={<Profile />} />
               <Route path="profile" element={<Profile />} />
               <Route path="orders" element={<Orders />} />
-              <Route path="wishlist" element={<Wishlist />} />
+              <Route path="bids" element={<MyBids />} />
+              <Route path="won-auctions" element={<WonAuctions />} />
+              <Route path="watchlist" element={<Watchlist />} />
             </Routes>
           </div>
         </div>

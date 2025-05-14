@@ -2,8 +2,10 @@ import { useState, useContext, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../../context/AuthContext'
 import { CartContext } from '../../context/CartContext'
+import { AuctionContext } from '../../context/AuctionContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiSearch, FiHeart } from 'react-icons/fi'
+import { FiClock, FiUser, FiMenu, FiX, FiSearch, FiBell } from 'react-icons/fi'
+import NotificationCenter from '../ui/NotificationCenter'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -11,6 +13,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const { isAuthenticated, user, logout } = useContext(AuthContext)
   const { totalItems } = useContext(CartContext)
+  const { notifications } = useContext(AuctionContext)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -29,7 +32,7 @@ const Header = () => {
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      navigate(`/products?search=${searchQuery}`)
+      navigate(`/auctions?search=${searchQuery}`)
       setSearchQuery('')
       setIsMenuOpen(false)
     }
@@ -62,9 +65,6 @@ const Header = () => {
             <Link to="/" className="text-gray-700 hover:text-primary-600 transition-colors">
               Home
             </Link>
-            <Link to="/products" className="text-gray-700 hover:text-primary-600 transition-colors">
-              Products
-            </Link>
             <Link to="/auctions" className="text-gray-700 hover:text-primary-600 transition-colors">
               Auctions
             </Link>
@@ -81,7 +81,7 @@ const Header = () => {
             <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search auctions..."
                 className="w-full py-2 pl-10 pr-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -92,18 +92,11 @@ const Header = () => {
 
           {/* User Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/cart" className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors">
-              <FiShoppingCart size={24} />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                  {totalItems}
-                </span>
-              )}
+            <Link to="/auctions" className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors">
+              <FiClock size={24} />
             </Link>
 
-            <Link to="/wishlist" className="p-2 text-gray-700 hover:text-primary-600 transition-colors">
-              <FiHeart size={24} />
-            </Link>
+            {isAuthenticated && <NotificationCenter />}
 
             {isAuthenticated ? (
               <div className="relative group">
@@ -116,8 +109,8 @@ const Header = () => {
                     <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Dashboard
                     </Link>
-                    <Link to="/dashboard/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      My Orders
+                    <Link to="/dashboard/auctions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      My Auctions
                     </Link>
                     <Link to="/dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Profile
@@ -162,7 +155,7 @@ const Header = () => {
               <form onSubmit={handleSearch} className="relative mb-4">
                 <input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Search auctions..."
                   className="w-full py-2 pl-10 pr-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -177,13 +170,6 @@ const Header = () => {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Home
-                </Link>
-                <Link
-                  to="/products"
-                  className="text-gray-700 hover:text-primary-600 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Products
                 </Link>
                 <Link
                   to="/auctions"
@@ -209,18 +195,43 @@ const Header = () => {
 
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <Link
-                    to="/cart"
+                    to="/auctions"
                     className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <FiShoppingCart size={20} />
-                    <span>Cart ({totalItems})</span>
+                    <FiClock size={20} />
+                    <span>Active Auctions</span>
                   </Link>
                 </div>
 
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   {isAuthenticated ? (
                     <>
+                      <Link
+                        to="#"
+                        className="flex items-center justify-between text-gray-700 hover:text-primary-600 transition-colors mb-4"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="relative">
+                            <FiBell size={20} className={notifications.length > 0 ? "text-primary-600" : ""} />
+                            {notifications.length > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                                {notifications.length > 9 ? '9+' : notifications.length}
+                              </span>
+                            )}
+                          </span>
+                          <span>Notifications</span>
+                        </div>
+                        {notifications.length > 0 && (
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                            {notifications.length} new
+                          </span>
+                        )}
+                      </Link>
                       <Link
                         to="/dashboard"
                         className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors"

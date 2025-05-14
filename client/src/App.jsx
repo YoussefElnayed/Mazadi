@@ -22,11 +22,6 @@ import Register from './pages/Register'
 import NotFound from './pages/NotFound'
 
 // Lazy loaded pages
-const Products = lazy(() => import('./pages/Products'))
-const ProductDetail = lazy(() => import('./pages/ProductDetail'))
-const Cart = lazy(() => import('./pages/Cart'))
-const Wishlist = lazy(() => import('./pages/Wishlist'))
-const Checkout = lazy(() => import('./pages/Checkout'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const About = lazy(() => import('./pages/About'))
 const Contact = lazy(() => import('./pages/Contact'))
@@ -34,7 +29,6 @@ const FAQ = lazy(() => import('./pages/FAQ'))
 const Shipping = lazy(() => import('./pages/Shipping'))
 const Returns = lazy(() => import('./pages/Returns'))
 const PaymentMethods = lazy(() => import('./pages/PaymentMethods'))
-const TrackOrder = lazy(() => import('./pages/TrackOrder'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsConditions = lazy(() => import('./pages/TermsConditions'))
 const Auctions = lazy(() => import('./pages/Auctions'))
@@ -48,14 +42,15 @@ function App() {
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
+              {/* Redirect from products to auctions */}
               <Route path="products" element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <Products />
+                  <Auctions />
                 </Suspense>
               } />
               <Route path="products/:id" element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <ProductDetail />
+                  <AuctionDetail />
                 </Suspense>
               } />
               <Route path="auctions" element={
@@ -66,21 +61,6 @@ function App() {
               <Route path="auctions/:id" element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuctionDetail />
-                </Suspense>
-              } />
-              <Route path="cart" element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <Cart />
-                </Suspense>
-              } />
-              <Route path="wishlist" element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <Wishlist />
-                </Suspense>
-              } />
-              <Route path="checkout" element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <Checkout />
                 </Suspense>
               } />
               <Route path="login" element={<Login />} />
@@ -118,11 +98,6 @@ function App() {
               <Route path="payment-methods" element={
                 <Suspense fallback={<LoadingFallback />}>
                   <PaymentMethods />
-                </Suspense>
-              } />
-              <Route path="track-order" element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <TrackOrder />
                 </Suspense>
               } />
               <Route path="privacy-policy" element={
